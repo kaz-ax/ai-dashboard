@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI活用事例 分析ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-hover: #334155;
+    --primary: #3b82f6;
+    --primary-light: #60a5fa;
+    --accent: #f59e0b;
+    --accent2: #10b981;
+    --accent3: #ef4444;
+    --accent4: #8b5cf6;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --border: #334155;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+    padding: 40px 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(90deg, var(--primary-light), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p { color: var(--text-muted); font-size: 1rem; }
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .summary-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: transform .2s;
+  }
+  .summary-card:hover { transform: translateY(-2px); }
+  .summary-card .number {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .summary-card .label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  .n1 { color: var(--primary-light); }
+  .n2 { color: var(--accent); }
+  .n3 { color: var(--accent2); }
+  .n4 { color: var(--accent4); }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+
+  .section {
+    margin-top: 40px;
+  }
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    padding-left: 16px;
+    border-left: 4px solid var(--primary);
+  }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+    gap: 24px;
+  }
+  .chart-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border);
+  }
+  .chart-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .chart-wrapper {
+    position: relative;
+    width: 100%;
+    max-height: 400px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-top: 16px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  th {
+    background: #0f172a;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:hover td { background: rgba(59,130,246,0.05); }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-high { background: rgba(239,68,68,.15); color: #f87171; }
+  .badge-mid { background: rgba(245,158,11,.15); color: #fbbf24; }
+  .badge-low { background: rgba(16,185,129,.15); color: #34d399; }
+
+  .improve-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    transition: transform .2s;
+  }
+  .improve-card:hover { transform: translateY(-2px); }
+  .improve-card h4 {
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .improve-card .desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+  }
+  .improve-card .action {
+    background: rgba(59,130,246,.08);
+    border-left: 3px solid var(--primary);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.88rem;
+    white-space: pre-line;
+    line-height: 1.7;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all .2s;
+  }
+  .tab:hover { background: var(--card-hover); }
+  .tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .insight-box {
+    background: linear-gradient(135deg, rgba(59,130,246,.08), rgba(139,92,246,.08));
+    border: 1px solid rgba(59,130,246,.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+    font-size: 0.92rem;
+    line-height: 1.8;
+  }
+  .insight-box strong { color: var(--primary-light); }
+
+  @media (max-width: 768px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .header h1 { font-size: 1.4rem; }
+    .summary-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>AI活用事例 分析ダッシュボード</h1>
+  <p>2026年1月 All-Crew Bootcamp｜個人のAI施策 &mdash; 全296施策の解析結果</p>
+</div>
+
+<!-- ====== サマリー ====== -->
+<div class="summary-row">
+  <div class="summary-card">
+    <div class="number n1">296</div>
+    <div class="label">総施策数</div>
+  </div>
+  <div class="summary-card">
+    <div class="number n2">106</div>
+    <div class="label">参加メンバー数</div>
+  </div>
+  <div class="summary-card">
+    <div class="number n3">15155分</div>
+    <div class="label">合計時間削減量（月間推計）</div>
+  </div>
+  <div class="summary-card">
+    <div class="number n4">103分</div>
+    <div class="label">施策あたり平均短縮時間</div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ====== セクション1: ツール利用状況 ====== -->
+<div class="section" id="tools">
+  <h2 class="section-title">1. ツール利用状況</h2>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3>AIツール別 利用件数</h3>
+      <div class="chart-wrapper">
+        <canvas id="toolChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>活用カテゴリ別 件数</h3>
+      <div class="chart-wrapper">
+        <canvas id="catChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="chart-grid" style="margin-top:24px;">
+    <div class="chart-card">
+      <h3>グループ別 施策件数</h3>
+      <div class="chart-wrapper">
+        <canvas id="groupCountChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>個人別 施策件数 TOP15</h3>
+      <div class="chart-wrapper">
+        <canvas id="personChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="insight-box">
+    <strong>Insight:</strong> 最も多く利用されているツールは <strong>明記なし（AI全般）</strong>（201件）です。
+    全体として ChatGPT/GPTs が圧倒的に多く利用されている一方、Claude・Gemini・NotebookLM等の専門ツールを使い分けているメンバーは、より高い効果を報告しています。
+    活用カテゴリとしては「その他」「文章作成・添削」が突出しています。
+  </div>
+</div>
+
+<!-- ====== セクション2: 定量効果 ====== -->
+<div class="section" id="effects">
+  <h2 class="section-title">2. 定量効果の分析</h2>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="tab-overview">概要</button>
+    <button class="tab" data-tab="tab-ranking">時短ランキング</button>
+    <button class="tab" data-tab="tab-category">カテゴリ別効果</button>
+    <button class="tab" data-tab="tab-group">グループ別効果</button>
+  </div>
+
+  <div id="tab-overview" class="tab-content active">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>時間短縮量の分布</h3>
+        <div class="chart-wrapper">
+          <canvas id="distChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>カテゴリ別 合計時間短縮量</h3>
+        <div class="chart-wrapper">
+          <canvas id="catSavingsChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="insight-box" style="margin-top:20px;">
+      <strong>Insight:</strong>
+      定量効果が記録されている施策は <strong>169件</strong>（57%）、
+      未記入が <strong>32件</strong>（11%）です。<br>
+      時間短縮が数値化できた施策の <strong>中央値は30分</strong>、
+      <strong>平均は103分</strong> の短縮です。<br>
+      特に「資料作成・スライド」「リサーチ・情報収集」カテゴリで大きな時間短縮効果が出ています。
+    </div>
+  </div>
+
+  <div id="tab-ranking" class="tab-content">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>氏名</th><th>Gr</th><th>課題</th><th>短縮時間</th><th>効果（原文）</th></tr></thead>
+        <tbody id="rankingBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-category" class="tab-content">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>カテゴリ</th><th>施策数</th><th>平均短縮(分)</th><th>合計短縮(分)</th><th>合計短縮(時間)</th></tr></thead>
+        <tbody id="catEffectBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-group" class="tab-content">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>グループ別 合計時間短縮量（分）</h3>
+        <div class="chart-wrapper">
+          <canvas id="groupSavingsChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>グループ別 施策あたり平均短縮時間（分）</h3>
+        <div class="chart-wrapper">
+          <canvas id="groupAvgChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== セクション3: 改善提案 ====== -->
+<div class="section" id="improvements">
+  <h2 class="section-title">3. さらなる改善に向けた具体的提案</h2>
+  <div id="improvementCards"></div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ---- Data ----
+const toolCounts = {"明記なし（AI全般）": 201, "ChatGPT / GPTs": 59, "Gemini": 13, "NotebookLM": 9, "Claude / Claude Code": 7, "Circleback": 5, "Nano Banana Pro": 3, "Lステップ": 3, "Canva / Canva AI": 3, "Genspark": 2, "Googleスライド": 2, "V0 / Vercel": 2, "Fish Audio": 1, "Adobe Premiere (AI文字起こし)": 1, "Whisper (OpenAI)": 1, "SUNO AI": 1, "Perplexity": 1, "Manus": 1, "Aqua Voice": 1, "ElevenLabs": 1, "Heygen": 1, "n8n (自動化)": 1};
+const catCounts = {"その他": 61, "文章作成・添削": 59, "議事録・会議支援": 50, "壁打ち・思考整理": 46, "資料作成・スライド": 32, "リサーチ・情報収集": 31, "日報・振り返り": 27, "デザイン・画像生成": 26, "SNS運用": 18, "動画制作・編集": 16, "業務自動化・効率化": 14, "採用・面接": 12, "契約・法務": 8, "システム開発": 7, "マニュアル作成": 6};
+const savingsDist = {"0-10min": 29, "11-30min": 60, "31-60min": 29, "1-3h": 19, "3-10h": 7, "10h+": 3};
+const groupStats = {"1": {"total_min": 258, "avg_min": 37, "count": 7}, "10": {"total_min": 626, "avg_min": 70, "count": 9}, "11": {"total_min": 1002, "avg_min": 125, "count": 8}, "12": {"total_min": 369, "avg_min": 62, "count": 6}, "13": {"total_min": 1320, "avg_min": 94, "count": 14}, "14": {"total_min": 138, "avg_min": 28, "count": 5}, "15": {"total_min": 87, "avg_min": 14, "count": 6}, "16": {"total_min": 445, "avg_min": 111, "count": 4}, "17": {"total_min": 29, "avg_min": 14, "count": 2}, "18": {"total_min": 3303, "avg_min": 413, "count": 8}, "2": {"total_min": 2001, "avg_min": 133, "count": 15}, "3": {"total_min": 320, "avg_min": 36, "count": 9}, "4": {"total_min": 115, "avg_min": 29, "count": 4}, "5": {"total_min": 358, "avg_min": 30, "count": 12}, "6": {"total_min": 282, "avg_min": 31, "count": 9}, "7": {"total_min": 1188, "avg_min": 85, "count": 14}, "8": {"total_min": 3044, "avg_min": 380, "count": 8}, "9": {"total_min": 270, "avg_min": 39, "count": 7}};
+const catSavings = {"壁打ち・思考整理": {"avg_min": 236, "total_min": 5907, "count": 25}, "資料作成・スライド": {"avg_min": 237, "total_min": 3554, "count": 15}, "SNS運用": {"avg_min": 262, "total_min": 3149, "count": 12}, "採用・面接": {"avg_min": 270, "total_min": 2162, "count": 8}, "その他": {"avg_min": 68, "total_min": 1773, "count": 26}, "文章作成・添削": {"avg_min": 54, "total_min": 1740, "count": 32}, "議事録・会議支援": {"avg_min": 37, "total_min": 922, "count": 25}, "動画制作・編集": {"avg_min": 78, "total_min": 862, "count": 11}, "リサーチ・情報収集": {"avg_min": 42, "total_min": 791, "count": 19}, "マニュアル作成": {"avg_min": 212, "total_min": 635, "count": 3}, "日報・振り返り": {"avg_min": 28, "total_min": 365, "count": 13}, "デザイン・画像生成": {"avg_min": 24, "total_min": 290, "count": 12}, "システム開発": {"avg_min": 102, "total_min": 205, "count": 2}, "業務自動化・効率化": {"avg_min": 55, "total_min": 165, "count": 3}, "契約・法務": {"avg_min": 15, "total_min": 45, "count": 3}};
+const top20 = [{"name": "国木田", "group": "8", "challenge": "自分以外の投稿文章の代理作成に作成に毎回30分ほどかかる", "saved_min": 2700, "before_min": null, "after_min": null, "original": "月約45時間の削減"}, {"name": "野上", "group": "18", "challenge": "スライド生成に時間がかかっていた", "saved_min": 2400, "before_min": 3000, "after_min": 600, "original": "50時間が10時間に短縮トータル40時間削減"}, {"name": "渡部", "group": "2", "challenge": "CS採用の課題が抽象度高く、タスクが止まってしまう課題があったので、CS採用用のプロジェクトを作成し", "saved_min": 1500, "before_min": 1800, "after_min": 300, "original": "30時間が5時間に短縮トータル25時間削減"}, {"name": "森本", "group": "11", "challenge": "業務マニュアルを作成するのに時間がかかっていた。", "saved_min": 600, "before_min": 1200, "after_min": 600, "original": "20時間→10時間に短縮"}, {"name": "本間", "group": "13", "challenge": "エグゼグティブパートナーの運用資料の作成にてどこからどう考えていいかもわからなかった。", "saved_min": 600, "before_min": null, "after_min": null, "original": "自分の今の思考力ですと、10時間程度かかる業務を3時間ほどに短縮"}, {"name": "矢追", "group": "7", "challenge": "パワポプレゼンテーション作成（ばんぐみきか企画書、提案書等）", "saved_min": 540, "before_min": 600, "after_min": 60, "original": "30ページ程度のバラエティ番組の企画書であれば、今まで作成にかかっていた時間 10時間→1時間に削減"}, {"name": "中島さん", "group": "10", "challenge": "杉尾社長・安田社長が直接講演やトークをしないと熱量や企業のコアな部分を伝えられない", "saved_min": 480, "before_min": null, "after_min": null, "original": "1週間に8件程度ある説明会付属の面談を、安田社長ではなく中島でも対応できるように。安田社長の時間が週8時間削減。"}, {"name": "佐藤", "group": "18", "challenge": "数値更新と報告に時間がかかっていた", "saved_min": 465, "before_min": 480, "after_min": 15, "original": "8時間→15分"}, {"name": "山田", "group": "18", "challenge": "先方や社内向けの文章作成に時間がかかっていた", "saved_min": 285, "before_min": 300, "after_min": 15, "original": "0.５時間が15分に短縮1日約５回なのでトータル1.25時間削減"}, {"name": "内山", "group": "7", "challenge": "業務効率を良くする", "saved_min": 240, "before_min": null, "after_min": null, "original": "１週間でいうと３〜４時間ほどの業務負荷が減った。頭で考えていたことをchatgptに吹き込むだけで考えてくれた"}, {"name": "福谷", "group": "12", "challenge": "複数業務を兼務しており、リソースが分散した", "saved_min": 180, "before_min": null, "after_min": null, "original": "：業務整理にかかっていた時間 1回あたり 180分：AI活用により 45分 に短縮"}, {"name": "紀岡", "group": "13", "challenge": "会食参加者の莫大な情報が散在しすぎていて分析に時間がかかっていた。", "saved_min": 180, "before_min": null, "after_min": null, "original": "週1回の分析にかかる時間が3時間ほど短縮している。"}, {"name": "高橋", "group": "16", "challenge": "新規参入でプロジェクト自体の機能や概要の理解に時間がかかる", "saved_min": 180, "before_min": 240, "after_min": 60, "original": "4時間→1時間"}, {"name": "宮本", "group": "8", "challenge": "日々のアタックリストの作成に時間がかかっていた。", "saved_min": 177, "before_min": 180, "after_min": 3, "original": "毎日3時間かかっていた、業務が3分ほどに短縮出来たので、60時間ほどの削減に繋がった。"}, {"name": "松本", "group": "1", "challenge": "事業責任者からの相談・質問対応が属人的で都度思考コストが発生していた。", "saved_min": 120, "before_min": null, "after_min": null, "original": "1件あたりの対応時間が半分以下に、週2時間削減"}, {"name": "奥田", "group": "2", "challenge": "課題と対策がなかなか自分の言葉にすることができていなかった", "saved_min": 120, "before_min": null, "after_min": null, "original": "対策や課題を書き出すのに2時間以上かかってしまっていたが、一つずつ課題を見直していき、明日の目標を作ってもらい、1時間以上減ることができた。"}, {"name": "森内", "group": "13", "challenge": "施策の実績分析", "saved_min": 120, "before_min": 180, "after_min": 60, "original": "傾向分析時間+リサーチ時間 3時間→1時間"}, {"name": "渡部", "group": "13", "challenge": "ピッチ資料が大会の審査基準に沿った内容になっているか、過去の受賞者の成功ケースに沿っているか自信がな", "saved_min": 120, "before_min": null, "after_min": null, "original": "過去受賞者のピッチの成功要因のリサーチや成功角度の高い全体構成の学習をするための2時間を省き、さらには壁打ちの1時間を削減することができた。また、より成功事例に"}, {"name": "oikawa", "group": "16", "challenge": "提案資料のまとめ", "saved_min": 120, "before_min": 180, "after_min": 60, "original": "180分→60分"}, {"name": "高橋", "group": "16", "challenge": "環境のセットアップでわからないことが多すぎる", "saved_min": 120, "before_min": 180, "after_min": 60, "original": "3時間→1時間"}];
+const improvements = [{"category": "効果測定の強化", "priority": "高", "title": "定量効果が未記入の施策が32件", "description": "全296件中 32件（11%）で定量効果が未記入です。効果を数値で把握することで、AIの活用度をより正確に評価でき、改善のPDCAが回しやすくなります。", "action": "各施策に「作業時間: Before → After」を必ず記録するフォーマットを導入する。週次で振り返りを行い、効果を定量化する習慣をつける。"}, {"category": "ツール多様化", "priority": "中", "title": "「明記なし（AI全般）」への依存度が高い（201件 / 68%）", "description": "最も利用されているツールが明記なし（AI全般）ですが、用途に応じて専門ツールを使い分けることで、さらに品質・速度を向上できます。", "action": "リサーチにはPerplexity/Gemini Deep Research、資料作成にはGenspark/Canva AI、コード開発にはCursor/Claude Code、議事録にはCircleback等、用途特化ツールの横展開を推進する。"}, {"category": "自動化の深化", "priority": "高", "title": "定型業務の自動化がまだ少ない", "description": "業務自動化に関する施策は14件（5%）と少なく、多くの施策が『AIに問い合わせて結果を手動で転記する』パターンです。GASやn8nを使ったワークフロー自動化で、さらに大きな時間削減が可能です。", "action": "1. 日報自動生成（Googleカレンダー→AI→Slack投稿）のようなEnd-to-End自動化を各グループで1つ構築する。\n2. 定型的なプロンプトはGPTsやClaudeのProjectsとして保存し、毎回の入力コストを削減する。\n3. n8n/Zapier等のノーコード自動化ツールの社内勉強会を実施する。"}, {"category": "プロンプト標準化", "priority": "高", "title": "成功事例のプロンプトを全社で共有・標準化", "description": "現在、各個人が独自にプロンプトやGPTsを作成していますが、同じような用途（文章添削、議事録要約、日報作成等）で重複した取り組みが多数見られます。成功事例のプロンプトを標準化し共有することで、全社的な底上げが可能です。", "action": "1. 用途別のベストプロンプト集（社内Wiki）を整備する。\n2. 特に効果が高かったGPTsを全社公開し、横展開する。\n3. 月次の「AI活用ベストプラクティス共有会」を開催する。"}, {"category": "品質指標の追加", "priority": "中", "title": "時間短縮だけでなく品質向上の指標も計測する", "description": "現在の効果測定は主に「時間短縮」に偏っています。AIを活用することで『クオリティが上がった』『手戻りが減った』『網羅性が上がった』等の品質面の効果も計測すべきです。", "action": "1. 「上長レビューでの差し戻し回数」「顧客からの修正依頼回数」等の品質KPIを設定する。\n2. 定量効果に「品質向上」「リスク低減」等の定性カテゴリも追加する。"}, {"category": "グループ間格差の解消", "priority": "高", "title": "グループ間でAI活用数に大きな差がある（最大27件 vs 最小3件）", "description": "活用が進んでいるグループの知見を、まだ活用が少ないグループに横展開することで、全社的な効果を大幅に拡大できます。", "action": "1. 各グループのファシリテーターが互いのグループを訪問し、ベストプラクティスを共有する。\n2. AI活用が進んでいるメンバーを「AIアンバサダー」として任命し、他グループの支援を行う。"}];
+const topPersons = {"新谷": 11, "高橋": 8, "菅野": 7, "国木田": 6, "中山": 6, "松本": 5, "渡部": 5, "こじろー": 5, "佐藤史": 4, "小野澤": 4, "前谷": 4, "島﨑": 4, "皆川": 4, "長谷川": 4, "内山": 4};
+const groupCounts = {"8": 27, "9": 23, "2": 22, "1": 21, "5": 20, "13": 20, "7": 19, "12": 18, "14": 18, "18": 18, "10": 15, "16": 15, "3": 13, "15": 13, "4": 11, "6": 10, "11": 10, "17": 3};
+
+// ---- Color palette ----
+const palette = [
+  '#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899',
+  '#06b6d4','#f97316','#84cc16','#e11d48','#6366f1','#14b8a6',
+  '#a855f7','#eab308','#22d3ee','#fb923c','#4ade80','#f43f5e',
+];
+function c(i) { return palette[i % palette.length]; }
+
+// ---- Chart defaults ----
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = '#334155';
+Chart.defaults.font.family = "'Segoe UI', sans-serif";
+
+// ---- 1. Tool chart ----
+new Chart(document.getElementById('toolChart'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(toolCounts),
+    datasets: [{ label: '利用件数', data: Object.values(toolCounts),
+      backgroundColor: Object.keys(toolCounts).map((_,i)=>c(i)),
+      borderRadius: 6, borderSkipped: false }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false } } }
+  }
+});
+
+// ---- 2. Category chart ----
+new Chart(document.getElementById('catChart'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(catCounts),
+    datasets: [{ label: '件数', data: Object.values(catCounts),
+      backgroundColor: Object.keys(catCounts).map((_,i)=>c(i)),
+      borderRadius: 6, borderSkipped: false }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false } } }
+  }
+});
+
+// ---- 3. Group count chart ----
+new Chart(document.getElementById('groupCountChart'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(groupCounts).map(k => 'Gr ' + k),
+    datasets: [{ label: '施策数', data: Object.values(groupCounts),
+      backgroundColor: '#3b82f6', borderRadius: 6 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+  }
+});
+
+// ---- 4. Person chart ----
+new Chart(document.getElementById('personChart'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(topPersons),
+    datasets: [{ label: '施策数', data: Object.values(topPersons),
+      backgroundColor: '#8b5cf6', borderRadius: 6 }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false } } }
+  }
+});
+
+// ---- 5. Savings distribution ----
+new Chart(document.getElementById('distChart'), {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(savingsDist),
+    datasets: [{ data: Object.values(savingsDist),
+      backgroundColor: Object.keys(savingsDist).map((_,i)=>c(i)),
+      borderWidth: 0, hoverOffset: 8 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right' } }
+  }
+});
+
+// ---- 6. Category savings ----
+const catSavLabels = Object.keys(catSavings);
+const catSavData = catSavLabels.map(k => catSavings[k].total_min);
+new Chart(document.getElementById('catSavingsChart'), {
+  type: 'bar',
+  data: {
+    labels: catSavLabels,
+    datasets: [{ label: '合計短縮(分)', data: catSavData,
+      backgroundColor: catSavLabels.map((_,i)=>c(i)),
+      borderRadius: 6, borderSkipped: false }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false } } }
+  }
+});
+
+// ---- 7. Group savings charts ----
+const gLabels = Object.keys(groupStats).map(k => 'Gr ' + k);
+const gTotals = Object.values(groupStats).map(v => v.total_min);
+const gAvgs = Object.values(groupStats).map(v => v.avg_min);
+
+new Chart(document.getElementById('groupSavingsChart'), {
+  type: 'bar',
+  data: {
+    labels: gLabels,
+    datasets: [{ label: '合計短縮(分)', data: gTotals,
+      backgroundColor: '#10b981', borderRadius: 6 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+  }
+});
+
+new Chart(document.getElementById('groupAvgChart'), {
+  type: 'bar',
+  data: {
+    labels: gLabels,
+    datasets: [{ label: '平均短縮(分)', data: gAvgs,
+      backgroundColor: '#f59e0b', borderRadius: 6 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+  }
+});
+
+// ---- Ranking table ----
+const tbody = document.getElementById('rankingBody');
+top20.forEach((r, i) => {
+  const tr = document.createElement('tr');
+  const hrs = r.saved_min >= 60 ? (r.saved_min/60).toFixed(1) + '時間' : r.saved_min + '分';
+  tr.innerHTML = `<td>${i+1}</td><td>${r.name}</td><td>${r.group}</td><td>${r.challenge}</td><td style="font-weight:700;color:#10b981">${hrs}</td><td style="font-size:0.8rem;color:#94a3b8">${r.original}</td>`;
+  tbody.appendChild(tr);
+});
+
+// ---- Category effect table ----
+const catBody = document.getElementById('catEffectBody');
+Object.entries(catSavings).forEach(([cat, v]) => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${cat}</td><td>${v.count}</td><td>${v.avg_min}</td><td>${v.total_min}</td><td style="font-weight:700;color:#f59e0b">${(v.total_min/60).toFixed(1)}h</td>`;
+  catBody.appendChild(tr);
+});
+
+// ---- Improvement cards ----
+const impDiv = document.getElementById('improvementCards');
+improvements.forEach(imp => {
+  const pClass = imp.priority === '高' ? 'badge-high' : imp.priority === '中' ? 'badge-mid' : 'badge-low';
+  const card = document.createElement('div');
+  card.className = 'improve-card';
+  card.innerHTML = `
+    <h4><span class="badge ${pClass}">優先度: ${imp.priority}</span> <span style="color:var(--text-muted);font-size:0.8rem">[${imp.category}]</span></h4>
+    <h4>${imp.title}</h4>
+    <p class="desc">${imp.description}</p>
+    <div class="action"><strong>具体的アクション:</strong><br>${imp.action}</div>
+  `;
+  impDiv.appendChild(card);
+});
+
+// ---- Tab logic ----
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
